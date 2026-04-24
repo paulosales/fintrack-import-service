@@ -10,27 +10,27 @@ into the database.
 ## Architecture
 
 ```
-                 ┌──────────────┐
-  Browser/FE  ──►  Traefik       │
-                 └──────┬───────┘
+                 ┌──────────-────┐
+  Browser/FE  ──►| Traefik       │
+                 └──────┬────-───┘
                         │ POST /import/{bank}
-                 ┌──────▼───────────────┐
+                 ┌──────▼──────────-─────┐
                  │   import-service      │  (Python / FastAPI)
                  │  - parse CSV          │
                  │  - compute fingerprint│
                  │  - publish to Kafka   │
-                 └──────┬───────────────┘
+                 └──────┬───────────-────┘
                         │ RabbitMQ queue: transactions-import
-                 ┌──────▼───────────────┐
+                 ┌──────▼────────────-───┐
                  │   account-service     │  (Rust / Axum)
                  │  - consume RabbitMQ   │
                  │  - resolve codes      │
                  │  - INSERT IGNORE      │
-                 └──────┬───────────────┘
+                 └──────┬─────────────-──┘
                         │
-                 ┌──────▼───────┐
+                 ┌──────▼──────-─┐
                  │    MySQL      │
-                 └──────────────┘
+                 └──────────────-┘
 ```
 
 ---
