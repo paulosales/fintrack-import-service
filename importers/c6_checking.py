@@ -1,5 +1,7 @@
+from typing import Any
+
 import pandas as pd
-from typing import List, Dict, Any
+
 from core.importer import Importer
 from utils.date_utils import parse_datetime_br
 
@@ -19,7 +21,7 @@ class C6CheckingImporter(Importer):
     ACCOUNT_CODE = "C6CHECK"
     HEADER_ROW = "Data Lançamento"
 
-    def parse(self, file_path: str) -> List[Dict[str, Any]]:
+    def parse(self, file_path: str) -> list[dict[str, Any]]:
         header_line = self._find_header_line(file_path)
 
         df = pd.read_csv(file_path, skiprows=header_line, encoding="utf-8")
@@ -45,13 +47,15 @@ class C6CheckingImporter(Importer):
                 full_description = self._build_description(title, description)
                 type_code = self._map_type(full_description, amount)
 
-                transactions.append({
-                    "account_code": self.ACCOUNT_CODE,
-                    "datetime": parse_datetime_br(date_str),
-                    "amount": amount,
-                    "description": full_description,
-                    "transaction_type_code": type_code,
-                })
+                transactions.append(
+                    {
+                        "account_code": self.ACCOUNT_CODE,
+                        "datetime": parse_datetime_br(date_str),
+                        "amount": amount,
+                        "description": full_description,
+                        "transaction_type_code": type_code,
+                    }
+                )
 
             except Exception as e:
                 print(f"[C6Checking] Error processing row: {e}")

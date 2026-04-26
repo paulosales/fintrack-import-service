@@ -1,18 +1,19 @@
+from typing import Any
+
 import pandas as pd
-from typing import List, Dict, Any
+
 from core.importer import Importer
 from utils.date_utils import parse_datetime
 
 
 class RBCImporter(Importer):
-
     ACCOUNT_CODE_MAP = {
         "Chequing": "RBCCHEK",
         "Savings": "RBCSAV",
         "Visa": "RBCVISA",
     }
 
-    def parse(self, file_path: str) -> List[Dict[str, Any]]:
+    def parse(self, file_path: str) -> list[dict[str, Any]]:
         columns = [
             "account_type",
             "account_number",
@@ -41,13 +42,15 @@ class RBCImporter(Importer):
                 description = self._build_description(row)
                 type_code = self._map_type(description, amount, account_type)
 
-                transactions.append({
-                    "account_code": account_code,
-                    "datetime": datetime_str,
-                    "amount": amount,
-                    "description": description,
-                    "transaction_type_code": type_code,
-                })
+                transactions.append(
+                    {
+                        "account_code": account_code,
+                        "datetime": datetime_str,
+                        "amount": amount,
+                        "description": description,
+                        "transaction_type_code": type_code,
+                    }
+                )
 
             except Exception as e:
                 print(f"Error processing row: {e}")

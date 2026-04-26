@@ -1,18 +1,18 @@
 import os
 import tempfile
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from core.fingerprint import generate
-from importers.pcfinancial import PCFinancialImporter
-from importers.mbna import MBNACardImporter
-from importers.rbc import RBCImporter
 from importers.bb import BBImporter
-from importers.nu import NUImporter
+from importers.c6_checking import C6CheckingImporter
 from importers.cibic_checking import CIBICCheckingImporter
 from importers.cibic_savings import CIBICSavingsImporter
-from importers.c6_checking import C6CheckingImporter
+from importers.mbna import MBNACardImporter
+from importers.nu import NUImporter
+from importers.pcfinancial import PCFinancialImporter
+from importers.rbc import RBCImporter
 from rabbitmq.producer import publish_import_batch
 from utils.logger import get_logger
 
@@ -33,7 +33,12 @@ IMPORTERS = {
     "c6-checking": C6CheckingImporter,
 }
 
-ALLOWED_CONTENT_TYPES = {"text/csv", "application/csv", "application/octet-stream", "text/plain"}
+ALLOWED_CONTENT_TYPES = {
+    "text/csv",
+    "application/csv",
+    "application/octet-stream",
+    "text/plain",
+}
 
 
 def _verify_token(credentials: HTTPAuthorizationCredentials = Depends(_security)):
@@ -71,7 +76,7 @@ async def import_csv(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unknown importer '{importer_type}'. "
-                   f"Allowed values: {sorted(IMPORTERS.keys())}",
+            f"Allowed values: {sorted(IMPORTERS.keys())}",
         )
 
     if file.content_type and file.content_type not in ALLOWED_CONTENT_TYPES:
@@ -97,7 +102,9 @@ async def import_csv(
         importer = IMPORTERS[importer_type]()
         transactions = importer.parse(tmp_path)
     except Exception as exc:
-        logger.exception("Failed to parse CSV for importer '%s': %s", importer_type, exc)
+        logger.exception(
+            "Failed to parse CSV for importer '%s': %s", importer_type, exc
+        )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Failed to parse CSV: {exc}",

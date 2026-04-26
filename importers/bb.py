@@ -1,14 +1,15 @@
+from typing import Any
+
 import pandas as pd
-from typing import List, Dict, Any
+
 from core.importer import Importer
 from utils.date_utils import parse_datetime_br
 
 
 class BBImporter(Importer):
-
     ACCOUNT_CODE = "BBCC"
 
-    def parse(self, file_path: str) -> List[Dict[str, Any]]:
+    def parse(self, file_path: str) -> list[dict[str, Any]]:
         columns = [
             "Data",
             "Lançamento",
@@ -38,13 +39,15 @@ class BBImporter(Importer):
                 description = self._build_description(row)
                 type_code = self._map_type(row["Tipo Lançamento"], amount)
 
-                transactions.append({
-                    "account_code": self.ACCOUNT_CODE,
-                    "datetime": datetime_str,
-                    "amount": amount,
-                    "description": description,
-                    "transaction_type_code": type_code,
-                })
+                transactions.append(
+                    {
+                        "account_code": self.ACCOUNT_CODE,
+                        "datetime": datetime_str,
+                        "amount": amount,
+                        "description": description,
+                        "transaction_type_code": type_code,
+                    }
+                )
 
             except Exception as e:
                 print(f"Error processing row: {e}")

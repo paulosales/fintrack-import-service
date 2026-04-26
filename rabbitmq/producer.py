@@ -1,9 +1,10 @@
 import json
 import os
 import uuid
-from typing import List, Dict, Any
+from typing import Any
 
 import aio_pika
+
 from utils.logger import get_logger
 
 logger = get_logger("rabbitmq.producer")
@@ -14,7 +15,7 @@ RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "transactions-import")
 
 async def publish_import_batch(
     importer_type: str,
-    transactions: List[Dict[str, Any]],
+    transactions: list[dict[str, Any]],
 ) -> str:
     """Publish a batch of parsed transactions to the RabbitMQ import queue.
 
@@ -39,6 +40,8 @@ async def publish_import_batch(
             ),
             routing_key=RABBITMQ_QUEUE,
         )
-        logger.info("Published import batch %s to queue '%s'", import_id, RABBITMQ_QUEUE)
+        logger.info(
+            "Published import batch %s to queue '%s'", import_id, RABBITMQ_QUEUE
+        )
 
     return import_id

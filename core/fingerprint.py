@@ -1,8 +1,8 @@
 import hashlib
-from typing import Dict, Any
+from typing import Any
 
 
-def generate(transaction: Dict[str, Any]) -> str:
+def generate(transaction: dict[str, Any]) -> str:
     """Generate an MD5 fingerprint for a transaction.
 
     The fingerprint is a deterministic hash of (datetime, amount, description)

@@ -1,6 +1,6 @@
-import pytest
 import io
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from fastapi.testclient import TestClient
 
 from main import app
@@ -9,11 +9,12 @@ client = TestClient(app)
 
 AUTH_HEADER = {"Authorization": "Bearer test-token"}
 
-MINIMAL_CSV = b"Date,Time,Amount,Description,Type\n01/15/2024,12:00 PM,-50.00,Coffee,PURCHASE\n"
+MINIMAL_CSV = (
+    b"Date,Time,Amount,Description,Type\n01/15/2024,12:00 PM,-50.00,Coffee,PURCHASE\n"
+)
 
 
 class TestHealthEndpoint:
-
     def test_health_returns_ok(self):
         response = client.get("/health")
         assert response.status_code == 200
@@ -21,8 +22,12 @@ class TestHealthEndpoint:
 
 
 class TestImportEndpoint:
-
-    def _upload(self, importer_type: str, content: bytes = MINIMAL_CSV, token: str = "test-token"):
+    def _upload(
+        self,
+        importer_type: str,
+        content: bytes = MINIMAL_CSV,
+        token: str = "test-token",
+    ):
         headers = {"Authorization": f"Bearer {token}"} if token else {}
         return client.post(
             f"/api/v1/import/{importer_type}",
@@ -43,7 +48,6 @@ class TestImportEndpoint:
         assert "Unknown importer" in response.json()["detail"]
 
     def test_successful_import_queues_transactions(self):
-        import pandas as pd
         mock_transactions = [
             {
                 "account_code": "PCFINANCIAL",
@@ -55,7 +59,9 @@ class TestImportEndpoint:
         ]
         with (
             patch("routers.import_router.PCFinancialImporter") as MockImporter,
-            patch("routers.import_router.publish_import_batch", return_value="abc-123") as mock_pub,
+            patch(
+                "routers.import_router.publish_import_batch", return_value="abc-123"
+            ) as mock_pub,
         ):
             MockImporter.return_value.parse.return_value = mock_transactions
             response = self._upload("pcfinancial")
@@ -79,7 +85,9 @@ class TestImportEndpoint:
     def test_importer_parse_error_returns_422(self):
         MockImporterClass = MagicMock()
         MockImporterClass.return_value.parse.side_effect = Exception("bad CSV")
-        with patch.dict("routers.import_router.IMPORTERS", {"pcfinancial": MockImporterClass}):
+        with patch.dict(
+            "routers.import_router.IMPORTERS", {"pcfinancial": MockImporterClass}
+        ):
             response = self._upload("pcfinancial")
 
         assert response.status_code == 422
@@ -97,7 +105,10 @@ class TestImportEndpoint:
         ]
         with (
             patch("routers.import_router.PCFinancialImporter") as MockImporter,
-            patch("routers.import_router.publish_import_batch", side_effect=Exception("RabbitMQ down")),
+            patch(
+                "routers.import_router.publish_import_batch",
+                side_effect=Exception("RabbitMQ down"),
+            ),
         ):
             MockImporter.return_value.parse.return_value = mock_transactions
             response = self._upload("pcfinancial")
@@ -106,8 +117,14 @@ class TestImportEndpoint:
 
     def test_all_importer_types_are_accepted(self):
         importers = [
-            "pcfinancial", "mbna", "rbc", "bb", "nu",
-            "cibic-checking", "cibic-savings", "c6-checking",
+            "pcfinancial",
+            "mbna",
+            "rbc",
+            "bb",
+            "nu",
+            "cibic-checking",
+            "cibic-savings",
+            "c6-checking",
         ]
         mock_transactions = [
             {
@@ -147,7 +164,10 @@ class TestImportEndpoint:
 
         with (
             patch("routers.import_router.PCFinancialImporter") as MockImporter,
-            patch("routers.import_router.publish_import_batch", side_effect=capture_publish),
+            patch(
+                "routers.import_router.publish_import_batch",
+                side_effect=capture_publish,
+            ),
         ):
             MockImporter.return_value.parse.return_value = mock_transactions
             response = self._upload("pcfinancial")
@@ -155,4 +175,3 @@ class TestImportEndpoint:
         assert response.status_code == 200
         assert "fingerprint" in captured["transactions"][0]
         assert captured["transactions"][0]["fingerprint"] != ""
-

@@ -136,7 +136,7 @@ All settings are read from environment variables (`.env` supported via
 
 | Variable                    | Default                       | Description                              |
 |-----------------------------|-------------------------------|------------------------------------------|
-| `PORT`                      | `8000`                        | HTTP port to listen on                   |
+| `PORT`                      | `3002`                        | HTTP port to listen on                   |
 | `RABBITMQ_URL`              | `amqp://guest:guest@localhost` | RabbitMQ connection URL                  |
 | `RABBITMQ_IMPORT_QUEUE`     | `transactions-import`         | Queue name for import messages           |
 
@@ -163,13 +163,37 @@ dependencies (including dev) from `uv.lock`.
 ### Run locally
 
 ```bash
-uv run uvicorn main:app --reload --port 8000
+uv run uvicorn main:app --reload --port 3002
 ```
 
 ### Run tests
 
 ```bash
 uv run pytest --cov=. --cov-report=term-missing
+```
+
+### Format code
+
+[Ruff](https://docs.astral.sh/ruff/) is used as the formatter (Black-compatible, 88-char lines).
+
+```bash
+# Format all files in-place
+uv run ruff format .
+
+# Preview what would change without writing
+uv run ruff format --check .
+```
+
+### Lint
+
+Ruff also handles linting (pyflakes, pycodestyle, isort, pyupgrade rules).
+
+```bash
+# Check for lint errors
+uv run ruff check .
+
+# Auto-fix fixable issues
+uv run ruff check --fix .
 ```
 
 ### Add / remove dependencies

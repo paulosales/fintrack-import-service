@@ -1,14 +1,15 @@
+from typing import Any
+
 import pandas as pd
-from typing import List, Dict, Any
+
 from core.importer import Importer
 from utils.date_utils import parse_date_iso
 
 
 class NUImporter(Importer):
-
     ACCOUNT_CODE = "NU"
 
-    def parse(self, file_path: str) -> List[Dict[str, Any]]:
+    def parse(self, file_path: str) -> list[dict[str, Any]]:
         df = pd.read_csv(file_path)
 
         transactions = []
@@ -22,13 +23,15 @@ class NUImporter(Importer):
                 amount = self._parse_amount(row["amount"])
                 description = str(row.get("title") or "").strip()
 
-                transactions.append({
-                    "account_code": self.ACCOUNT_CODE,
-                    "datetime": parse_date_iso(date),
-                    "amount": amount,
-                    "description": description,
-                    "transaction_type_code": self._choose_type(amount),
-                })
+                transactions.append(
+                    {
+                        "account_code": self.ACCOUNT_CODE,
+                        "datetime": parse_date_iso(date),
+                        "amount": amount,
+                        "description": description,
+                        "transaction_type_code": self._choose_type(amount),
+                    }
+                )
 
             except Exception as e:
                 print(f"Error processing row: {e}")

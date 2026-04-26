@@ -1,14 +1,15 @@
+from typing import Any
+
 import pandas as pd
-from typing import List, Dict, Any
+
 from core.importer import Importer
 from utils.date_utils import parse_date_iso
 
 
 class CIBICCheckingImporter(Importer):
-
     ACCOUNT_CODE = "CIBICCHK"
 
-    def parse(self, file_path: str) -> List[Dict[str, Any]]:
+    def parse(self, file_path: str) -> list[dict[str, Any]]:
         df = pd.read_csv(
             file_path, header=None, names=["date", "description", "amount", "extra"]
         )
@@ -25,13 +26,15 @@ class CIBICCheckingImporter(Importer):
                 description = str(row["description"]).strip()
                 type_code = self._map_type(description, amount)
 
-                transactions.append({
-                    "account_code": self.ACCOUNT_CODE,
-                    "datetime": parse_date_iso(date_str),
-                    "amount": amount,
-                    "description": description,
-                    "transaction_type_code": type_code,
-                })
+                transactions.append(
+                    {
+                        "account_code": self.ACCOUNT_CODE,
+                        "datetime": parse_date_iso(date_str),
+                        "amount": amount,
+                        "description": description,
+                        "transaction_type_code": type_code,
+                    }
+                )
 
             except Exception as e:
                 print(f"Error processing row: {e}")
@@ -47,7 +50,9 @@ class CIBICCheckingImporter(Importer):
     def _map_type(self, description: str, amount: float) -> str:
         desc = description.upper()
 
-        if any(k in desc for k in ("POINT OF SALE", "ATM WITHDRAWAL", "SERVICE CHARGE")):
+        if any(
+            k in desc for k in ("POINT OF SALE", "ATM WITHDRAWAL", "SERVICE CHARGE")
+        ):
             return "PURCHASE"
         if any(k in desc for k in ("E-TRANSFER", "INTERNET TRANSFER")):
             return "PAYMENT"

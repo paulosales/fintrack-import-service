@@ -1,14 +1,15 @@
+from typing import Any
+
 import pandas as pd
-from typing import List, Dict, Any
+
 from core.importer import Importer
 from utils.date_utils import parse_datetime
 
 
 class MBNACardImporter(Importer):
-
     ACCOUNT_CODE = "MBNA"
 
-    def parse(self, file_path: str) -> List[Dict[str, Any]]:
+    def parse(self, file_path: str) -> list[dict[str, Any]]:
         df = pd.read_csv(file_path)
 
         transactions = []
@@ -21,13 +22,15 @@ class MBNACardImporter(Importer):
                 datetime_str = parse_datetime(date_str, "12:00 PM")
                 type_code = self._map_type(description, amount)
 
-                transactions.append({
-                    "account_code": self.ACCOUNT_CODE,
-                    "datetime": datetime_str,
-                    "amount": amount,
-                    "description": description,
-                    "transaction_type_code": type_code,
-                })
+                transactions.append(
+                    {
+                        "account_code": self.ACCOUNT_CODE,
+                        "datetime": datetime_str,
+                        "amount": amount,
+                        "description": description,
+                        "transaction_type_code": type_code,
+                    }
+                )
 
             except Exception as e:
                 print(f"Error occurred while processing row: {e}")
