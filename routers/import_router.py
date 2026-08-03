@@ -3,6 +3,7 @@ import tempfile
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, Field
 
 from core.fingerprint import generate
 from importers.bb import BBImporter
@@ -12,6 +13,7 @@ from importers.cibic_savings import CIBICSavingsImporter
 from importers.mbna import MBNACardImporter
 from importers.nu import NUImporter
 from importers.pcfinancial import PCFinancialImporter
+from importers.questrade import QuestradeImporter
 from importers.rbc import RBCImporter
 from rabbitmq.producer import publish_import_batch
 from utils.logger import get_logger
@@ -41,6 +43,14 @@ ALLOWED_CONTENT_TYPES = {
 }
 
 
+class QuestradeImportRequest(BaseModel):
+    refresh_token: str = Field(min_length=1)
+    start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    account_number: str | None = None
+    is_practice: bool = False
+
+
 def _verify_token(credentials: HTTPAuthorizationCredentials = Depends(_security)):
     """Forward token validation to the account-service / Keycloak.
 
@@ -54,6 +64,58 @@ def _verify_token(credentials: HTTPAuthorizationCredentials = Depends(_security)
             detail="Missing authentication token",
         )
     return credentials.credentials
+
+
+@router.post("/questrade")
+async def import_questrade(
+    payload: QuestradeImportRequest,
+    _token: str = Depends(_verify_token),
+):
+    try:
+        importer = QuestradeImporter()
+        transactions = await importer.fetch_transactions(
+            refresh_token=payload.refresh_token,
+            start_date=payload.start_date,
+            end_date=payload.end_date,
+            account_number=payload.account_number,
+            is_practice=payload.is_practice,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        logger.exception("Failed to fetch Questrade transactions: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Failed to retrieve Questrade transactions: {exc}",
+        ) from exc
+
+    if not transactions:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No deposit or withdrawal transactions were found for the given range",
+        )
+
+    for transaction in transactions:
+        transaction["fingerprint"] = generate(transaction)
+
+    try:
+        import_id = await publish_import_batch("questrade", transactions)
+    except Exception as exc:
+        logger.exception("Failed to publish Questrade import to RabbitMQ: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Failed to publish transactions to the import queue. Please try again.",
+        ) from exc
+
+    return {
+        "import_id": import_id,
+        "importer": "questrade",
+        "queued_count": len(transactions),
+        "message": "Transactions queued for import successfully",
+    }
 
 
 @router.post("/{importer_type}")

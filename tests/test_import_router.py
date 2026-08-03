@@ -1,5 +1,5 @@
 import io
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -46,6 +46,11 @@ class TestImportEndpoint:
         response = self._upload("unknown-bank")
         assert response.status_code == 400
         assert "Unknown importer" in response.json()["detail"]
+
+    def test_questrade_import_requires_json_endpoint(self):
+        response = self._upload("questrade")
+
+        assert response.status_code == 422
 
     def test_successful_import_queues_transactions(self):
         mock_transactions = [
@@ -175,3 +180,69 @@ class TestImportEndpoint:
         assert response.status_code == 200
         assert "fingerprint" in captured["transactions"][0]
         assert captured["transactions"][0]["fingerprint"] != ""
+
+    def test_questrade_import_queues_transactions(self):
+        mock_transactions = [
+            {
+                "account_code": "QUESTTFSA",
+                "datetime": "2024-03-01 00:00:00",
+                "amount": 250.0,
+                "description": "TFSA contribution",
+                "transaction_type_code": "PAYMENT",
+            }
+        ]
+
+        with (
+            patch("routers.import_router.QuestradeImporter") as MockImporter,
+            patch(
+                "routers.import_router.publish_import_batch", return_value="quest-123"
+            ) as mock_pub,
+        ):
+            MockImporter.return_value.fetch_transactions = AsyncMock(
+                return_value=mock_transactions
+            )
+            response = client.post(
+                "/api/v1/import/questrade",
+                json={
+                    "refresh_token": "refresh-token",
+                    "start_date": "2024-03-01",
+                    "end_date": "2024-03-31",
+                },
+                headers=AUTH_HEADER,
+            )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["import_id"] == "quest-123"
+        assert body["importer"] == "questrade"
+        assert body["queued_count"] == 1
+        mock_pub.assert_called_once_with("questrade", mock_transactions)
+
+    def test_questrade_import_returns_422_when_no_cash_movements(self):
+        with patch("routers.import_router.QuestradeImporter") as MockImporter:
+            MockImporter.return_value.fetch_transactions = AsyncMock(return_value=[])
+            response = client.post(
+                "/api/v1/import/questrade",
+                json={
+                    "refresh_token": "refresh-token",
+                    "start_date": "2024-03-01",
+                    "end_date": "2024-03-31",
+                },
+                headers=AUTH_HEADER,
+            )
+
+        assert response.status_code == 422
+        assert "No deposit or withdrawal" in response.json()["detail"]
+
+    def test_questrade_import_returns_422_for_validation_errors(self):
+        response = client.post(
+            "/api/v1/import/questrade",
+            json={
+                "refresh_token": "refresh-token",
+                "start_date": "03/01/2024",
+                "end_date": "2024-03-31",
+            },
+            headers=AUTH_HEADER,
+        )
+
+        assert response.status_code == 422

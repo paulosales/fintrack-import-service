@@ -8,6 +8,7 @@ from importers.cibic_savings import CIBICSavingsImporter
 from importers.mbna import MBNACardImporter
 from importers.nu import NUImporter
 from importers.pcfinancial import PCFinancialImporter
+from importers.questrade import QuestradeImporter
 from importers.rbc import RBCImporter
 
 
@@ -260,6 +261,114 @@ class TestCIBICCheckingImporter:
             result = CIBICCheckingImporter().parse("dummy.csv")
 
         assert result[1]["transaction_type_code"] == "PAYMENT"
+
+
+class TestQuestradeImporter:
+    def test_map_activity_returns_deposit_transaction(self):
+        importer = QuestradeImporter()
+
+        transaction = importer._map_activity(
+            {
+                "type": "Deposit",
+                "description": "TFSA contribution",
+                "transactionDate": "2024-03-01T14:30:00.000000-05:00",
+                "netAmount": 250.0,
+            }
+        )
+
+        assert transaction == {
+            "account_code": "QUESTTFSA",
+            "datetime": "2024-03-01 19:30:00",
+            "amount": 250.0,
+            "description": "TFSA contribution",
+            "transaction_type_code": "PAYMENT",
+        }
+
+    def test_map_activity_returns_withdrawal_transaction(self):
+        importer = QuestradeImporter()
+
+        transaction = importer._map_activity(
+            {
+                "action": "Withdrawal",
+                "description": "Funds withdrawn",
+                "transactionDate": "2024-03-02",
+                "amount": 100.0,
+            }
+        )
+
+        assert transaction == {
+            "account_code": "QUESTTFSA",
+            "datetime": "2024-03-02 00:00:00",
+            "amount": -100.0,
+            "description": "Funds withdrawn",
+            "transaction_type_code": "PAYMENT",
+        }
+
+    def test_map_activity_skips_non_cash_activity(self):
+        importer = QuestradeImporter()
+
+        transaction = importer._map_activity(
+            {
+                "type": "Trade",
+                "description": "Bought 2 shares of XYZ",
+                "transactionDate": "2024-03-03T00:00:00Z",
+                "netAmount": -50.0,
+            }
+        )
+
+        assert transaction is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_transactions_filters_to_deposits_and_withdrawals(self, mocker):
+        importer = QuestradeImporter()
+
+        mocker.patch.object(
+            importer,
+            "_redeem_refresh_token",
+            return_value={
+                "access_token": "access-token",
+                "api_server": "https://api.example.com",
+            },
+        )
+        mocker.patch.object(
+            importer,
+            "_resolve_account",
+            return_value={"number": "12345678", "type": "TFSA"},
+        )
+        mocker.patch.object(
+            importer,
+            "_fetch_activities",
+            return_value=[
+                {
+                    "type": "Deposit",
+                    "description": "Contribution",
+                    "transactionDate": "2024-03-01",
+                    "netAmount": 250.0,
+                },
+                {
+                    "type": "Trade",
+                    "description": "Buy order",
+                    "transactionDate": "2024-03-02",
+                    "netAmount": -25.0,
+                },
+                {
+                    "type": "Withdrawal",
+                    "description": "Transfer out",
+                    "transactionDate": "2024-03-03",
+                    "netAmount": 50.0,
+                },
+            ],
+        )
+
+        transactions = await importer.fetch_transactions(
+            refresh_token="refresh-token",
+            start_date="2024-03-01",
+            end_date="2024-03-31",
+        )
+
+        assert len(transactions) == 2
+        assert transactions[0]["amount"] == 250.0
+        assert transactions[1]["amount"] == -50.0
 
 
 class TestCIBICSavingsImporter:

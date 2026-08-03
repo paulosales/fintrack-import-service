@@ -47,6 +47,7 @@ into the database.
 | `cibic-checking` | CIBC Chequing                   |
 | `cibic-savings`  | CIBC Savings                    |
 | `c6-checking`  | C6 Bank (conta corrente)          |
+| `questrade`    | Questrade TFSA cash movements     |
 
 ---
 
@@ -96,6 +97,37 @@ Upload a CSV file and enqueue its transactions for import.
 | `415`  | Unsupported file content-type          |
 | `422`  | CSV could not be parsed                |
 | `503`  | RabbitMQ unavailable                   |
+
+---
+
+### `POST /api/v1/import/questrade`
+
+Retrieve Questrade deposits and withdrawals directly from the Questrade API and
+enqueue them for import.
+
+**Headers**
+
+| Header          | Value                        |
+|-----------------|------------------------------|
+| `Authorization` | `Bearer <keycloak_jwt_token>` |
+
+**Request**
+
+`Content-Type: application/json`
+
+```json
+{
+  "refresh_token": "<questrade_manual_authorization_token>",
+  "start_date": "2024-01-01",
+  "end_date": "2024-12-31",
+  "account_number": "12345678",
+  "is_practice": false
+}
+```
+
+`account_number` is optional when the API token only grants access to a single
+TFSA account. Imported transactions are published with account code `QUESTTFSA`
+and transaction type code `PAYMENT`.
 
 ---
 
