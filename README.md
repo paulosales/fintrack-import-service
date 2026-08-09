@@ -46,6 +46,7 @@ into the database.
 | `nu`           | Nubank (credit card)              |
 | `cibic-checking` | CIBC Chequing                   |
 | `cibic-savings`  | CIBC Savings                    |
+| `cibic-mastercard` | CIBC Mastercard               |
 | `c6-checking`  | C6 Bank (conta corrente)          |
 | `questrade`    | Questrade TFSA cash movements     |
 

@@ -9,6 +9,7 @@ from core.fingerprint import generate
 from importers.bb import BBImporter
 from importers.c6_checking import C6CheckingImporter
 from importers.cibic_checking import CIBICCheckingImporter
+from importers.cibic_mastercard import CIBICMastercardImporter
 from importers.cibic_savings import CIBICSavingsImporter
 from importers.mbna import MBNACardImporter
 from importers.nu import NUImporter
@@ -32,6 +33,7 @@ IMPORTERS = {
     "nu": NUImporter,
     "cibic-checking": CIBICCheckingImporter,
     "cibic-savings": CIBICSavingsImporter,
+    "cibic-mastercard": CIBICMastercardImporter,
     "c6-checking": C6CheckingImporter,
 }
 
@@ -130,7 +132,7 @@ async def import_csv(
     ----------
     importer_type:
         One of: pcfinancial, mbna, rbc, bb, nu, cibic-checking,
-        cibic-savings, c6-checking
+        cibic-savings, cibic-mastercard, c6-checking
     file:
         The CSV file exported from the bank.
     """

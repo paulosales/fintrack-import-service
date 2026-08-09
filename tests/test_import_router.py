@@ -129,6 +129,7 @@ class TestImportEndpoint:
             "nu",
             "cibic-checking",
             "cibic-savings",
+            "cibic-mastercard",
             "c6-checking",
         ]
         mock_transactions = [

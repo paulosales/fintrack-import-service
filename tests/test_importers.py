@@ -4,6 +4,7 @@ import pytest
 
 from importers.bb import BBImporter
 from importers.cibic_checking import CIBICCheckingImporter
+from importers.cibic_mastercard import CIBICMastercardImporter
 from importers.cibic_savings import CIBICSavingsImporter
 from importers.mbna import MBNACardImporter
 from importers.nu import NUImporter
@@ -261,6 +262,28 @@ class TestCIBICCheckingImporter:
             result = CIBICCheckingImporter().parse("dummy.csv")
 
         assert result[1]["transaction_type_code"] == "PAYMENT"
+
+
+class TestCIBICMastercardImporter:
+    def test_parse_account_code(self):
+        import pandas as pd
+
+        df = pd.DataFrame(
+            {
+                "date": ["2026-07-30", "2026-07-29"],
+                "description": ["SAVE ON FOODS #4425 WINNIPEG, MB", "A1 MINI MARKET WINNIPEG, MB"],
+                "amount": [7.79, 22.93],
+                "extra": [None, None],
+                "card": ["5268********5052", "5268********5052"],
+            }
+        )
+        with patch("pandas.read_csv", return_value=df):
+            result = CIBICMastercardImporter().parse("dummy.csv")
+
+        assert all(t["account_code"] == "CIBICMASTER" for t in result)
+        assert result[0]["transaction_type_code"] == "PURCHASE"
+        assert result[0]["amount"] == 7.79
+        assert result[1]["amount"] == 22.93
 
 
 class TestQuestradeImporter:
