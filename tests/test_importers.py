@@ -243,6 +243,36 @@ class TestNUImporter:
         assert result[0]["description"] == "Netflix"
         assert result[1]["description"] == "Salary"
 
+    def test_comma_decimal_and_signed_amounts(self):
+        import pandas as pd
+
+        df = pd.DataFrame(
+            {
+                "date": ["2026-03-30", "2026-03-08", "2026-04-01", "2026-04-02"],
+                "title": ["Uber* Trip", "Pagamento recebido", "Supermercado", "Devolucao"],
+                "amount": ["28,49", "- 321,68", "1.234,56", "- 1.500,00"],
+            }
+        )
+        with patch("pandas.read_csv", return_value=df):
+            result = NUImporter().parse("dummy.csv")
+
+        assert len(result) == 4
+        # '28,49' expense -> -28.49 PURCHASE
+        assert result[0]["amount"] == pytest.approx(-28.49)
+        assert result[0]["transaction_type_code"] == "PURCHASE"
+
+        # '- 321,68' payment -> +321.68 PAYMENT
+        assert result[1]["amount"] == pytest.approx(321.68)
+        assert result[1]["transaction_type_code"] == "PAYMENT"
+
+        # '1.234,56' expense -> -1234.56 PURCHASE
+        assert result[2]["amount"] == pytest.approx(-1234.56)
+        assert result[2]["transaction_type_code"] == "PURCHASE"
+
+        # '- 1.500,00' payment -> +1500.00 PAYMENT
+        assert result[3]["amount"] == pytest.approx(1500.00)
+        assert result[3]["transaction_type_code"] == "PAYMENT"
+
 
 class TestCIBICCheckingImporter:
     def test_parse_account_code(self, sample_cibic_checking_df):
@@ -282,8 +312,8 @@ class TestCIBICMastercardImporter:
 
         assert all(t["account_code"] == "CIBICMASTER" for t in result)
         assert result[0]["transaction_type_code"] == "PURCHASE"
-        assert result[0]["amount"] == 7.79
-        assert result[1]["amount"] == 22.93
+        assert result[0]["amount"] == -7.79
+        assert result[1]["amount"] == -22.93
 
 
 class TestQuestradeImporter:

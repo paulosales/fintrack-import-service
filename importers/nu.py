@@ -39,10 +39,32 @@ class NUImporter(Importer):
 
         return transactions
 
-    def _parse_amount(self, amount) -> float:
+    def _parse_amount(self, amount: Any) -> float:
         if pd.isna(amount):
             return 0.0
-        return -float(amount)
+        if isinstance(amount, (int, float)):
+            return -float(amount)
+
+        amount_str = str(amount).strip()
+        if not amount_str:
+            return 0.0
+
+        amount_str = (
+            amount_str.replace("R$", "")
+            .replace("$", "")
+            .replace(" ", "")
+            .replace("\xa0", "")
+        )
+
+        if "." in amount_str and "," in amount_str:
+            if amount_str.rfind(",") > amount_str.rfind("."):
+                amount_str = amount_str.replace(".", "").replace(",", ".")
+            else:
+                amount_str = amount_str.replace(",", "")
+        elif "," in amount_str:
+            amount_str = amount_str.replace(",", ".")
+
+        return -float(amount_str)
 
     def _choose_type(self, amount: float) -> str:
         return "PURCHASE" if amount < 0 else "PAYMENT"

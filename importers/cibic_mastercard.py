@@ -27,6 +27,8 @@ class CIBICMastercardImporter(Importer):
                 amount = self._parse_amount(row["amount"])
                 description = str(row["description"]).strip()
                 type_code = self._map_type(description, amount)
+                if type_code == "PURCHASE" and amount > 0:
+                    amount = -amount
 
                 transactions.append(
                     {
